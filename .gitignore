@@ -1,0 +1,6 @@
+/raspi3-tutorial
+.env
+.vscode
+*.o
+*.img
+*.elf
