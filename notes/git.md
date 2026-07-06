@@ -34,9 +34,16 @@ git log -n <number>
 **By Author**: To isolate contributions from a single team member  
 `git log --author="Name"`
 
-With Visual Graph: To see how branches diverge and merge via an ASCII graph representation,
+With Visual Graph: To see how branches diverge and merge via an ASCII graph representation  
 `git log --graph --oneline --all`
 
-With Code Patches: To review the actual code additions and deletions (diff) introduced by each commit, add the patch flag
+With Code Patches: To review the actual code additions and deletions (diff) introduced by each commit, add the patch flag  
 `git log -p`
 
+
+## git push
+```shell
+git remote add origin <your-github-repo-url>
+git branch -M main
+git push -u origin main
+```
