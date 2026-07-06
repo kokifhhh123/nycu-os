@@ -4,3 +4,5 @@
 *.o
 *.img
 *.elf
+/notes/local-notes.md
+/notes/local-notes2.md
