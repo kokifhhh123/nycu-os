@@ -1,0 +1,4 @@
+core_freq_min=250
+arm_64bit=1
+kernel=kernel8.img
+enable_uart=1
