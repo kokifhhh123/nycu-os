@@ -47,3 +47,63 @@ git remote add origin <your-github-repo-url>
 git branch -M main
 git push -u origin main
 ```
+```
+remote:
+origin → https://github.com/koki/kernel.git
+
+upstream:
+local main → origin/main
+```
+git push -u origin main means: `git push --set-upstream origin main`
+
+
+## git permanently delete a file from the entire Git commit history
+```shell
+sudo apt install git-filter-repo
+
+git filter-repo --path path/to/file --invert-paths 
+(path/to/file should be the git file path not system full path)
+
+git push origin --force --all
+git push origin --force --tags
+```
+
+## git reset
+### Undo commit, keep changes staged
+```shell
+git reset --soft HEAD~1
+```
+```
+commit is removed  
+changes go back to staged area
+```
+
+### Undo commit, keep changes unstaged
+```shell
+git reset --mixed HEAD~1
+```
+```
+commit is removed
+changes remain in working directory
+but are not staged
+```
+
+### Undo commit and discard changes completely
+```shell
+git reset --hard HEAD~1
+```
+```
+commit is removed
+changes are deleted
+```
+
+### want to go back to a certain commit, not the closest one
+```
+git log --oneline
+```
+Keep changes staged  
+`git reset --soft 7b2e110`  
+Keep changes unstaged  
+`git reset --mixed 7b2e110`  
+Delete later changes
+`git reset --hard 7b2e110`
