@@ -2,4 +2,6 @@
 .vscode
 *.o
 *.img
+*.elf
 /notes/local-notes*.md
+compile_flags.txt
