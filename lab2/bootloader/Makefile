@@ -1,5 +1,6 @@
 SRCS:= start.S boot.c ../src/mini_uart.c
 # OBJS = $(SRCS: .c=.o)
+CFLAGS = -fno-stack-protector -g
 OBJS = start.o boot.o ../src/mini_uart.o
 INCLUDES = -I. -I../include
 
@@ -15,11 +16,17 @@ start.o: start.S
 	aarch64-linux-gnu-gcc $(INCLUDES) -o $@ $(CFLAGS) -c $<
 
 boot.img: $(OBJS)
-	aarch64-linux-gnu-ld $(INCLUDES) $(OBJS) -T link.ld -o boot.elf
+	aarch64-linux-gnu-ld $(INCLUDES) $(OBJS) -T link.ld -o boot.elf -Map=boot.map
 	aarch64-linux-gnu-objcopy -O binary boot.elf boot.img
 
 clean:
 	$(RM) $(OBJS) boot.elf boot.img
+
+debug:
+	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty -gdb tcp::1234 -S
+
+gdb:
+	gdb-multiarch boot.elf -ex "target remote localhost:1234"
 
 boot:
 	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty

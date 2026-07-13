@@ -1,6 +1,6 @@
 SECTIONS
 {
-    . = 0x60000;
+    . = 0x80000;
     .text : {
         KEEP(*(.text.boot))
         *(.text)
@@ -18,4 +18,6 @@ SECTIONS
     }
     __bss_end = .;
     __bss_size = __bss_end - __bss_start;
+    __stack_bottom = 0x70000;
+    __stack_top = 0x78000;
 }
