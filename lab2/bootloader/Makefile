@@ -28,8 +28,9 @@ debug:
 gdb:
 	gdb-multiarch boot.elf -ex "target remote localhost:1234"
 
-boot:
-	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty
-
 run:
+	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty \
+						-initrd ../archive/initramfs.cpio -dtb ../archive/bcm2710-rpi-3-b-plus.dtb
+
+boot:
 	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial stdio

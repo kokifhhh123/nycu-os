@@ -28,11 +28,10 @@ $(K8).img: $(OBJS)
 clean:
 	$(RM) $(K8:=.elf) $(OBJS)
 
-qe:
-	qemu-system-aarch64 -M raspi3b -kernel kernel8.img -display none -serial null -serial stdio -initrd archive/initramfs.cpio
-
 run:
-	qemu-system-aarch64 -M raspi3b -kernel kernel8.img -display none -serial null -serial stdio
+	qemu-system-aarch64 -M raspi3b -kernel kernel8.img -display none \
+									-serial null -serial stdio -initrd archive/initramfs.cpio \
+									-dtb archive/bcm2710-rpi-3-b-plus.dtb
 
 debug:
 	qemu-system-aarch64 -M raspi3b -kernel kernel8.img -display none -serial null -serial stdio -S -s
@@ -40,5 +39,14 @@ debug:
 on:
 	sudo screen /dev/ttyUSB1 115200
 
+onqe:
+	sudo screen /dev/pts/10
+
+load:
+	python3 loadimg/loadimg.py
+
 gdb:
-	gdb-multiarch boot.elf -ex "target remote localhost:1234"
+	gdb-multiarch kernel8.elf -ex "target remote localhost:1234"
+
+umnt:
+	sync && sudo umount ../../sdcard
