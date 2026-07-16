@@ -3,5 +3,7 @@
 *.o
 *.img
 *.elf
+*.map
+*.cpio
 /notes/local-notes*.md
 compile_flags.txt
