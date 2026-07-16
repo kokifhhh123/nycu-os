@@ -27,6 +27,11 @@ qemu-system-aarch64 -M raspi3b -kernel kernel8.img -display none -serial null -s
 -s      open GDB server at tcp::1234
 ```
 
+## clangd command
+```shell
+bear -- make
+```
+
 
 # Makefile usuage
 ```shell

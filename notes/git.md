@@ -1,4 +1,4 @@
-## git show
+# git show
 ```shell
 git show <commit-hash>
 
@@ -21,7 +21,7 @@ Up Arrow: Scroll up by one single line.
 ```
 
 
-## git log
+# git log
 ```shell
 git log
 git log --oneline
@@ -41,12 +41,18 @@ With Code Patches: To review the actual code additions and deletions (diff) intr
 `git log -p`
 
 
-## git push
+# git push
 ```shell
 git remote add origin <your-github-repo-url>
 git branch -M main
 git push -u origin main
 ```
+
+
+```shell
+git push --force-with-lease
+```
+
 ```
 remote:
 origin → https://github.com/koki/kernel.git
@@ -57,7 +63,7 @@ local main → origin/main
 git push -u origin main means: `git push --set-upstream origin main`
 
 
-## git permanently delete a file from the entire Git commit history
+# git permanently delete a file from the entire Git commit history
 ```shell
 sudo apt install git-filter-repo
 
@@ -68,7 +74,7 @@ git push origin --force --all
 git push origin --force --tags
 ```
 
-## git reset
+# git reset
 ### Undo commit, keep changes staged
 ```shell
 git reset --soft HEAD~1
@@ -107,3 +113,26 @@ Keep changes unstaged
 `git reset --mixed 7b2e110`  
 Delete later changes
 `git reset --hard 7b2e110`
+
+
+# git change commit message
+## newest:
+```shell
+git commit --amend
+```
+push to remote
+```
+git push --force-with-lease
+```
+## 往前 3 筆：
+```
+git rebase -i HEAD~3
+```
+```
+pick a1b2c3 first message
+pick d4e5f6 second message
+pick 123abc third message
+```
+```
+reword d4e5f6 second message
+```
