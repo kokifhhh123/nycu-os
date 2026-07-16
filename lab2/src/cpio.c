@@ -1,7 +1,7 @@
 #include "cpio.h"
 
-#define cpio_address 0x20000000
-// #define cpio_address 0x8000000
+// #define cpio_address 0x20000000
+// #define cpio_address_hard 0x8000000
 
 static void print() {
     unsigned char *ptr = (unsigned char*)0x8000000;
@@ -60,9 +60,8 @@ static void print() {
     // uart_send('\n');
 }
 
-
-void cpio_ls() {
-    unsigned char *ptr = (unsigned char*)cpio_address;
+void cpio_ls(unsigned char* cpio_address) {
+    unsigned char *ptr = (unsigned char *)cpio_address;
     const int BUF_SIZE = 128;
     const int num = 4;
     while(1) {
@@ -109,8 +108,8 @@ void cpio_ls() {
     }
 }
 
-static void cpio_find_file(const char *name) {
-    unsigned char *ptr = (unsigned char*)cpio_address;
+static void cpio_find_file(const char *name, unsigned char* cpio_address) {
+    unsigned char *ptr = (unsigned char *)cpio_address;
     const int BUF_SIZE = 128;
     const int num = 4;
     while(1) {
@@ -135,8 +134,10 @@ static void cpio_find_file(const char *name) {
         unsigned int x = hex_to_dec(data_size);
         
         
-        int kk = ((110+y)/num)*num + ((110+y)%num==0 ? 0 : num);
-        int hh = ((kk+x)/num)*num + ((kk+x)%num==0 ? 0 : num);
+        // int kk = ((110+y)/num)*num + ((110+y)%num==0 ? 0 : num);
+        // int hh = ((kk+x)/num)*num + ((kk+x)%num==0 ? 0 : num);
+        int kk = (110 + y + 3) & ~3;
+        int hh = (kk + x + 3) & ~3;
 
         unsigned char *pp = ptr+110;
         int id = 0;
@@ -164,7 +165,7 @@ static void cpio_find_file(const char *name) {
     uart_send_string("\n");
 }
 
-void cpio_cat() {
+void cpio_cat(unsigned char* cpio_address) {
     const int BUF_SIZE = 128;
     char buffer[BUF_SIZE];
     uart_send_string("Filename: ");
@@ -179,5 +180,5 @@ void cpio_cat() {
         buffer[i++] = c;
     }
     buffer[i] = '\0';
-    cpio_find_file(buffer);
+    cpio_find_file(buffer, cpio_address);
 }
