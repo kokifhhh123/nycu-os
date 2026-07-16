@@ -29,16 +29,18 @@ compare:
 
 4:  bl main
 
-    ldr x2, =_dtb_ptr
-    ldr x0, [x2]
+    # ldr x2, =_dtb_ptr
+    # ldr x0, [x2]
+    mov x0, x19
 
     mov x1, #0x80000
     br x1
 
 
 relocate:
-    ldr x1, =_dtb_ptr
-    str x0, [x1]
+    # ldr x1, =_dtb_ptr
+    # str x0, [x1]
+    mov x19, x0
     
     ldr x1, =__rel_start
     ldr x2, =__rel_size

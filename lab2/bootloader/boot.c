@@ -1,5 +1,7 @@
 #include "mini_uart.h"
 
+extern unsigned long _dtb_ptr;
+
 void uart_send_size(unsigned int size) {
     unsigned char *ptr = (unsigned char *)&size;
     uart_send_string("2 start send number\n");
@@ -33,6 +35,15 @@ static void wait_for_magic(void) {
 int main() {
     uart_init();
     unsigned int size = 0;
+    
+    
+    void *dtb_ptr = (void*)_dtb_ptr;
+    unsigned long addr = _dtb_ptr;
+    uart_send_string("dtb address: ");
+    uart_send_hex(addr);
+    uart_send_string("\n");
+
+
     wait_for_magic();
     // uart_send_string("READY\n");
     size |= (unsigned int)uart_recv()<<0;
