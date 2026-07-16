@@ -499,3 +499,552 @@ memcpy(&bits, &f, sizeof(bits));
 // This copies the raw bytes from f into bits.
 ```
 ## Character-pointer exception
+```c
+// C permits an object's representation to be inspected through character pointers:
+float f = 1.0f;
+unsigned char *bytes = (unsigned char *)&f;
+
+for (size_t i = 0; i < sizeof f; i++) {
+    printf("%02x ", bytes[i]);
+}
+
+unsigned char * // may inspect any object
+uint32_t *      // may not generally inspect a float object
+```
+Kernels sometimes use `-fno-strict-aliasing`
+```c
+// Compiling with:
+
+-fno-strict-aliasing
+
+// tells the compiler not to make aggressive assumptions that pointers of unrelated types cannot refer to the same memory.
+```
+
+
+# Effective type and raw allocated memory
+Memory returned from an allocator has no declared C type initially:
+```c
+void *memory = allocator(sizeof(struct task));
+
+// can treat it as a structure:
+struct task *task = memory;
+task->state = READY;
+
+// This becomes relevant when implementing:
+//     slab allocators
+//     page allocators
+//     memory pools
+//     DMA buffers
+
+```
+But arbitrary type-punning between incompatible object types can create undefined behavior.
+
+
+# Endianness
+```c
+uint32_t value = 0x12345678;
+
+// Little-endian memory:
+address + 0: 78
+address + 1: 56
+address + 2: 34
+address + 3: 12
+
+// Big-endian memory:
+address + 0: 12
+address + 1: 34
+address + 2: 56
+address + 3: 78
+```
+
+# Undefined behavior
+Undefined behavior is especially dangerous in kernel code because compiler optimization may transform the program in unexpected ways.
+```c
+int x = INT_MAX;
+x++;                         // signed overflow
+int *p = NULL;
+*p = 1;                      // null dereference
+int x;
+return x;                    // uninitialized value
+uint32_t x = 1u << 32;       // shift count too large
+int array[4];
+array[5] = 1;                // out of bounds
+uint32_t *p = misaligned_address;
+uint32_t x = *p;             // potentially invalid alignment
+```
+
+
+# Macro , `static inline`
+```c
+Bad:
+#define SQUARE(x) x * x
+SQUARE(1 + 2)
+
+becomes:
+1 + 2 * 1 + 2
+
+Better:
+#define SQUARE(x) ((x) * (x))
+```
+```c
+// A header can define small operations as:
+static inline uint32_t mmio_read(uintptr_t address)
+{
+    return *(volatile uint32_t *)address;
+}
+// Advantages over macros:
+//     type checking
+//     arguments evaluated once
+//     easier debugging
+//     proper scoping
+//     compiler can still inline it
+
+// static prevents multiple-definition linker errors when the header is included in multiple source files.
+```
+
+
+# `container_of`
+```c
+// Kernel data structures often embed one structure inside another.
+struct list_node {
+    struct list_node *next;
+    struct list_node *prev;
+};
+struct task {
+    int pid;
+    struct list_node run_queue_node;
+};
+
+// Given a pointer to run_queue_node, recover the containing task:
+#define container_of(ptr, type, member) \
+    ((type *)((char *)(ptr) - offsetof(type, member)))
+// Usage:
+struct task *task =
+    container_of(node, struct task, run_queue_node);
+```
+
+
+
+# Flexible array members
+```c
+// A structure may end with an array whose size is determined dynamically:
+
+struct packet {
+    uint32_t length;
+    uint8_t data[];
+};
+
+// Allocate it as:
+
+struct packet *p =
+    allocator(sizeof(struct packet) + payload_size);
+
+// Then:
+
+p->length = payload_size;
+p->data[0] = ...;
+
+// The flexible array must be the final member.
+```
+
+# Bit-fields
+```c
+// type member_name : number_of_bits;
+struct flags {
+    unsigned enable : 1;
+    unsigned mode   : 3;
+};
+
+// But bit-field layout is implementation-defined. It can depend on:
+//     compiler
+//     ABI
+//     endianness
+//     underlying type
+// Therefore, bit-fields are often avoided for MMIO and persistent binary formats.
+
+
+// Explicit masks are more predictable:
+#define ENABLE_MASK (1u << 0)
+#define MODE_MASK   (7u << 1)
+```
+```c
+// can use them like ordinary integer members:
+struct flags f = {0};
+
+f.enable = 1;
+f.mode = 5;
+
+if (f.enable) {
+    // enabled
+}
+```
+## Signed and unsigned bit-fields
+Prefer explicitly writing `unsigned` or `signed`.
+```c
+struct example {
+    unsigned a : 3;
+    signed   b : 3;
+};
+```
+## Unnamed bit-fields
+```c
+struct control {
+    unsigned enable : 1;
+    unsigned        : 3;
+    unsigned mode   : 2;
+};
+
+// Conceptually
+bit 0      enable
+bits 1–3   unused
+bits 4–5   mode
+// However, the actual physical bit positions are not portable because bit-field layout is implementation-defined.
+
+
+// cannot take a bit-field's address
+struct flags f;
+unsigned *p = &f.enable;   // invalid
+```
+### Important rules
+```c
+struct example {
+    unsigned a : 1;   // valid
+    unsigned b : 3;   // valid
+    unsigned   : 2;   // unnamed padding field
+    unsigned   : 0;   // start a new allocation unit
+};
+```
+
+
+
+# Unions
+A union lets several members share the same memory location.
+```c
+// A union stores multiple possible representations in the same memory:
+union register_value {
+    uint32_t raw;
+    uint8_t bytes[4];
+};
+
+union register_value v;
+// All members begin at the same address:
+&v.raw == (uint32_t *)&v
+&v.bytes[0] == (uint8_t *)&v
+```
+## Variant data
+A union is often used when a value may have one of several forms.  
+```c
+enum value_type {
+    VALUE_INT,
+    VALUE_FLOAT
+};
+
+struct value {
+    enum value_type type;
+
+    union {
+        int i;
+        float f;
+    } data;
+};
+```
+```c
+struct value v;
+
+v.type = VALUE_INT;
+v.data.i = 42;
+```
+
+## Hardware abstractions
+```c
+union control_register {
+    uint32_t raw;
+    struct {
+        uint32_t enable : 1;
+        uint32_t mode   : 2;
+        uint32_t reserved : 29;
+    } bits;
+};
+```
+Then code may use:  
+```c
+union control_register reg;
+
+reg.raw = read_register();
+reg.bits.enable = 1;
+write_register(reg.raw);
+
+// For portable hardware code, masks and shifts are usually safer:
+reg |= 1u << ENABLE_BIT;
+```
+
+# Enumerations
+Enums provide named integer constants:
+```c
+enum task_state {
+    TASK_READY,
+    TASK_RUNNING,
+    TASK_BLOCKED
+};
+```
+
+
+# Memory barriers
+CPUs and compilers may reorder memory accesses.  
+Kernel code may require:  
+- compiler barriers  
+- load barriers  
+- store barriers  
+- full memory barriers  
+- device memory barriers  
+
+
+# Memory-mapped I/O access width
+Suppose a register is specified as 32-bit.  
+```c
+// Correct:
+*(volatile uint32_t *)address = value;
+
+// Potentially incorrect:
+*(volatile uint8_t *)address = value;
+```
+
+
+# Compiler attributes
+Common GCC/Clang attributes in kernel code:  
+```c
+__attribute__((aligned(16)))
+__attribute__((packed))
+__attribute__((section(".text.boot")))
+__attribute__((noreturn))
+__attribute__((unused))
+__attribute__((weak))
+
+// Examples:
+uint8_t stack[4096] __attribute__((aligned(16)));
+void panic(void) __attribute__((noreturn));
+void boot_entry(void)
+    __attribute__((section(".text.boot")));
+// These are compiler extensions, not standard C, but they are essential in freestanding environments.
+```
+
+
+# Custom sections
+Objects can be placed in linker-controlled sections:  
+```c
+__attribute__((section(".init.data")))
+static uint8_t initialization_data[128];
+// The linker script can then place that section at a specific address.
+// Used for:
+//     boot code
+//     interrupt vector tables
+//     initialization-only code
+//     per-CPU data
+//     device-tree storage
+//     special metadata tables
+```
+
+# Weak symbols
+A weak symbol can be overridden by a strong definition:  
+```c
+void default_handler(void) __attribute__((weak));
+void default_handler(void)
+{
+    while (1) {
+    }
+}
+
+// Another source file can define:
+void default_handler(void)
+{
+    // custom implementation
+}
+// Common uses:
+//     default interrupt handlers
+//     optional platform hooks
+//     architecture-specific overrides
+//     test replacements
+```
+
+
+# Freestanding versus hosted C
+Normal application C is hosted. Kernel and firmware C is usually freestanding.  
+In a freestanding implementation, you cannot assume the existence of:  
+- `main`
+- `printf`
+- `malloc`
+- files
+- processes
+- operating-system services
+- the complete standard library
+
+Compile with options such as:  
+```shell
+-ffreestanding
+-fno-builtin
+-fno-stack-protector
+```
+may need to implement:
+```c
+memcpy
+memset
+memmove
+memcmp
+strlen
+// because the compiler may emit calls to them.
+```
+
+
+# Calling conventions and ABI
+C function calls depend on the platform ABI.  
+
+On AArch64, the ABI defines things such as:
+- where arguments are passed
+- where return values are placed
+- which registers a function must preserve
+- stack alignment
+- structure-return rules
+
+This matters when C calls assembly:  
+```c
+extern void context_switch(void *old_context,
+                           void *new_context);
+// The assembly implementation must obey the same ABI as the C compiler.
+// For AArch64, stack pointer alignment is normally required to remain 16-byte aligned at function-call boundaries.
+```
+
+
+# Inline assembly
+```c
+// Inline assembly connects C code to CPU instructions:
+static inline void wait_for_event(void)
+{
+    __asm__ volatile("wfe");
+}
+// Operands and clobbers matter:
+__asm__ volatile(
+    "mrs %0, CurrentEL"
+    : "=r"(value)
+    :
+    : "memory"
+);
+```
+Important parts:
+- output operands
+- input operands
+- clobbered registers
+- "memory" clobber
+- volatile
+
+_Incorrect inline assembly can silently break when optimization is enabled._
+
+
+# Kernel stacks are often small.
+Avoid:
+```c
+void function(void)
+{
+    uint8_t huge_buffer[65536];
+}
+
+void recurse(void)
+{
+    recurse();
+}
+```
+
+
+# Variable-length arrays
+```c
+// This creates an array whose size is known only at runtime:
+void function(size_t n)
+{
+    uint8_t buffer[n];
+}
+// VLAs can unexpectedly consume large amounts of stack and are often forbidden in kernel code.
+```
+
+
+# Pointer overflow and allocator arithmetic
+```c
+// Allocator code frequently performs address arithmetic:
+uintptr_t current = (uintptr_t)heap_current;
+uintptr_t aligned = ALIGN_UP(current, alignment);
+uintptr_t next = aligned + size;
+
+// must check overflow:
+if (size > UINTPTR_MAX - aligned) {
+    return NULL;
+}
+```
+
+# `restrict`
+```c
+// `restrict` promises that a pointer is the exclusive way to access an object during a particular scope:
+void copy(uint8_t *restrict dst,
+          const uint8_t *restrict src,
+          size_t size);
+// This allows stronger optimization.
+
+// violating the promise causes undefined behavior:
+copy(buffer + 1, buffer, 100);
+```
+
+
+
+# Designated initializers
+Useful for large structures and operation tables:  
+```c
+struct driver driver = {
+    .name = "uart",
+    .init = uart_init,
+    .read = uart_read,
+    .write = uart_write,
+};
+```
+Benefits:
+- clear member names
+- independent of declaration order
+- unspecified fields become zero
+- easier maintenance
+
+Arrays can also use them:
+```c
+handler_t handlers[256] = {
+    [32] = timer_handler,
+    [33] = uart_handler,
+};
+```
+
+
+# Compile-time checks
+Use `_Static_assert` to verify assumptions:
+```c
+_Static_assert(sizeof(uint32_t) == 4,
+               "uint32_t must be four bytes");
+```
+Check hardware-layout offsets:
+```c
+_Static_assert(offsetof(struct registers, status) == 0x18,
+               "incorrect register layout");
+```
+Check structure size:
+```c
+_Static_assert(sizeof(struct header) == 16,
+               "incorrect header size");
+```
+These checks prevent silent layout errors.
+
+
+
+# Practical rule for kernel code
+
+Use the type that expresses the purpose:
+```c
+uint32_t register_value;   // exactly 32 bits
+uint64_t physical_addr;    // exactly 64 bits, when required
+uintptr_t pointer_value;   // integer capable of storing a pointer
+size_t buffer_size;        // object size or array length
+unsigned int retry_count;  // ordinary integer, exact width irrelevant
+```
+
