@@ -23,7 +23,9 @@ clean:
 	$(RM) $(OBJS) boot.elf boot.img
 
 debug:
-	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty -gdb tcp::1234 -S
+	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial pty \
+						-initrd ../archive/initramfs.cpio -dtb ../archive/bcm2710-rpi-3-b-plus.dtb \
+						-gdb tcp::1234 -S -no-reboot
 
 gdb:
 	gdb-multiarch boot.elf -ex "target remote localhost:1234"
@@ -33,4 +35,5 @@ run:
 						-initrd ../archive/initramfs.cpio -dtb ../archive/bcm2710-rpi-3-b-plus.dtb
 
 boot:
-	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial stdio
+	qemu-system-aarch64 -M raspi3b -kernel boot.img -display none -serial null -serial stdio \
+						-initrd ../archive/initramfs.cpio -dtb ../archive/bcm2710-rpi-3-b-plus.dtb

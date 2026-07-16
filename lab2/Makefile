@@ -40,9 +40,9 @@ on:
 	sudo screen /dev/ttyUSB1 115200
 
 onqe:
-	sudo screen /dev/pts/10
+	sudo screen /dev/pts/11
 
-load:
+py:
 	python3 loadimg/loadimg.py
 
 gdb:
