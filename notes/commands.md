@@ -170,3 +170,181 @@ aarch64-linux-gnu-readelf -S kernel8.elf
 file kernel8.elf
 file kernel8.img
 ```
+
+
+# Armv8-A Assembly
+```
+ldr x3, [x1]
+
+ldr x4, =0x60000
+ldr x1, =__bss_start
+```
+---
+```
+.byte 0   // 1 byte
+.hword 0  // 2 bytes
+.word 0   // 4 bytes
+.quad 0   // 8 bytes
+```
+```
+ex:
+.word 1, 2, 3, 4        // 1 2 3 4
+.ascii "hello"          // h e l l o
+.asciz "hello"          // h e l l o \0
+
+.space 64
+.space 16, 0xff
+.fill 8, 4, 0
+```
+
+`.align 3`
+
+# gdb uauage
+
+```
+break main
+break _start
+break *0x80000
+info breakpoints
+delete 1
+disable 1
+enable 1
+hbreak *0x60000
+```
+```
+differences: break usually sets a software breakpoint, hbreak sets a hardware breakpoint
+hbreak *0x60000 
+break *0x60000
+```
+```
+c
+s
+n
+si
+ni
+finish // Continue until the current function returns.
+
+
+// Registers
+info registers
+info registers x0 x1 x2 sp pc
+p/x $x0
+p/x $sp
+p/x $pc
+set $x0 = 0x80000
+
+
+// Memory inspection
+x/4bx $x0       // Display four bytes starting at the address in x0.
+x/8wx $x0       // Display eight 32-bit words in hexadecimal.
+x/4gx $x0       // Display four 64-bit values in hexadecimal.
+x/s $x0         // Interpret memory at x0 as a null-terminated string.
+x/i $pc         // 0x60048:     bl      0x601e8
+x/gx &_dtb_ptr  // 0x80840:        0x0000000000000000
+
+// The general format is:
+x/<count><format><size> address    // convention: count + size + format
+// Common formats:
+x    hexadecimal
+d    decimal
+u    unsigned decimal
+c    character
+s    string
+i    instruction
+// Common sizes:
+b    byte, 1 byte
+h    halfword, 2 bytes
+w    word, 4 bytes
+g    giant word, 8 bytes
+
+
+
+// Symbols and variables
+p/x &_dtb_ptr           // Print the address of _dtb_ptr.
+x/gx &_dtb_ptr          // Read the 8-byte value stored at _dtb_ptr.
+info address _dtb_ptr   // Show where the symbol is located.
+info variables          // List known global and static variables.
+info functions          // List known functions.
+
+
+// Disassembly
+disassemble _start                  // Disassemble the symbol _start.
+disassemble /r _start               // Disassemble _start and show instruction bytes.
+disassemble 0x80000, 0x80200        // Disassemble an explicit address range.
+disassemble /r 0x80000, 0x80400
+x/20i $pc                           // Show 50 instructions starting from the current program counter.
+x/20i 0x60000                       // Show 20 instructions starting from 0x60000.
+x/100i _start                       // Show 100 instructions starting from _start.
+set disassemble-next-line on        // Automatically show assembly near the current instruction.
+```
+
+`*` means: Treat this expression as an exact instruction address.
+```
+break *0x60000
+With *:
+explicitly mean: Set a breakpoint at memory address 0x60000.
+
+x/20i 0x60000
+x/20i does not need *
+x command already means examine memory at an address:
+```
+
+
+```
+// Source code
+list                           // Show source code near the current location.
+list main                      // Show source code for main.
+info line main                 // Show the address range corresponding to a source line or function.
+
+
+// Call stack
+backtrace
+bt                      // Show the call stack.
+frame 1                 // Switch to stack frame 1.
+info frame              // Show details about the current stack frame.
+
+
+// Automatic display
+display/i $pc           // Automatically display the current instruction after every step.
+display/x $x0           // Automatically display x0.
+info display            // List automatic displays.
+undisplay 1             // Remove display number 1.
+
+
+// Useful commands
+info registers x0 x1 sp pc
+p/x &_dtb_ptr
+x/gx &_dtb_ptr
+x/4bx $x0
+x/20i $pc
+
+```
+
+## difference between p/x and x/x in GDB
+### p/x prints the value of an expression in hexadecimal
+```
+p/x $x0         // prints the value stored in register x0.
+p/x variable
+p/x &variable   
+p/x &_dtb_ptr   // prints the address of _dtb_ptr.
+p/x 10 + 20
+```
+### x/x examines memory at an address and displays the memory contents in hexadecimal
+```
+x/x $x0         // treats the value in x0 as a memory address and reads memory from that location.
+ex:
+x0 = 0x80000
+memory at 0x80000 = 0x12345678
+```
+```
+p/x $x0 -> 0x80000
+x/x $x0 -> 0x80000: 0x12345678
+```
+```
+p/x expression   → print the expression's value
+x/x address      → read memory at the address
+```
+```
+p/x &_dtb_ptr           // shows where _dtb_ptr is stored.
+x/gx &_dtb_ptr          // reads the 8-byte value stored inside _dtb_ptr.
+```
