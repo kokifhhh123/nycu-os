@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <stdint.h>
 
 int cmp_string(const char *a, const char *b) {
     while(*a && (*a==*b)) {
@@ -22,5 +23,10 @@ unsigned int hex_to_dec(char *str) {
         res = res*16 + val;
         i++;
     }
+    return res;
+}
+
+uintptr_t alignup(uintptr_t tar, unsigned int num) {
+    uintptr_t res = (tar+num)&(~(uintptr_t)num);
     return res;
 }
