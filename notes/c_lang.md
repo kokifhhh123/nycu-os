@@ -11,11 +11,12 @@ uintptr_t address_as_integer;
 size_t length;
 ptrdiff_t difference;
 ```
-`uint8_t`, `uint32_t`, `uint64_t`: exact-width unsigned integers  
-`uintptr_t`: integer large enough to store a pointer  
-`size_t`: object size and array index type  
-`ptrdiff_t`: result of subtracting two pointers  
-
+```c
+uint8_t, uint32_t, uint64_t:      exact-width unsigned integers  
+uintptr_t:                        integer large enough to store a pointer  
+size_t:                           object size and array index type  
+ptrdiff_t:                        result of subtracting two pointers  
+```
 
 # Bitwise operations
 ```c
